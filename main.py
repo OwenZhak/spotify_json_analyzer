@@ -1,6 +1,6 @@
 import ctypes
 import tkinter as tk
-from tkinter import filedialog, messagebox, Text, Scrollbar, Frame, Button, Label
+from tkinter import filedialog, messagebox, Text, Scrollbar, Frame, Button, Label, OptionMenu, StringVar
 from analyze_json import SpotifyAnalyzer
 
 
@@ -8,6 +8,8 @@ class SpotifyAnalyzerUI:
     def __init__(self, root):
         self.root = root
         self.analyzer = SpotifyAnalyzer()
+        self.selected_year = StringVar(root)
+        self.selected_year.set("All Time")  # Default value
         self.setup_ui()
 
     def setup_ui(self):
@@ -27,6 +29,14 @@ class SpotifyAnalyzerUI:
         select_button = Button(left_frame, text="Select JSON Files", command=self.select_files, font=("Arial", 14),
                                bg="#c0392b", fg="white", width=button_width, height=button_height)
         select_button.pack(pady=10)
+
+        # Year selection dropdown
+        self.year_label = Label(left_frame, text="Select Year:", font=("Arial", 12), bg="#1e1e1e", fg="white")
+        self.year_label.pack(pady=5)
+
+        self.year_dropdown = OptionMenu(left_frame, self.selected_year, "All Time")  # Initial value, updated later
+        self.year_dropdown.config(font=("Arial", 12), bg="#34495e", fg="white", width=15)
+        self.year_dropdown.pack(pady=5)
 
         sort_plays_button = Button(left_frame, text="Sort by Plays", command=self.sort_by_plays, font=("Arial", 14),
                                    bg="#2980b9", fg="white", width=button_width, height=button_height)
@@ -76,23 +86,55 @@ class SpotifyAnalyzerUI:
             return
 
         self.analyzer.process_data(combined_data)
-        self.display_result(self.analyzer.get_sorted_by_plays())
+
+        # Update year dropdown options
+        years = ["All Time"] + self.analyzer.track_years
+        menu = self.year_dropdown["menu"]
+        menu.delete(0, "end")
+        for year in years:
+            menu.add_command(label=year, command=lambda value=year: self.selected_year.set(value))
+
+        self.sort_by_plays()  # Display initial result
 
     def display_result(self, sorted_data):
         self.result_text.delete(1.0, tk.END)
-        self.result_text.insert(tk.END, "Sorted Track Plays:\n")
+        selected_year = self.selected_year.get()
+        self.result_text.insert(tk.END, f"Sorted Track Plays ({selected_year}):\n")
         for index, (key, value) in enumerate(sorted_data, start=1):
             play_count = value
-            total_play_time_ms = self.analyzer.track_play_time[key]
-            total_play_time_minutes = total_play_time_ms / 60000
-            self.result_text.insert(tk.END, f"{index}. {key}: {play_count} plays, {total_play_time_minutes:.2f} minutes\n")
+            year = int(selected_year) if selected_year != "All Time" else None
+
+            if year is not None and year in self.analyzer.track_play_time and key in self.analyzer.track_play_time[year]:
+                total_play_time_ms = self.analyzer.track_play_time[year][key]
+                total_play_time_minutes = total_play_time_ms / 60000
+                self.result_text.insert(tk.END,
+                                         f"{index}. {key}: {play_count} plays, {total_play_time_minutes:.2f} minutes\n")
+            elif year is None:  # "All Time" case
+                # Aggregate play time across all years
+                total_play_time_ms = 0
+                for year_data in self.analyzer.track_play_time.values():
+                    if key in year_data:
+                        total_play_time_ms += year_data[key]
+
+                if total_play_time_ms > 0:
+                    total_play_time_minutes = total_play_time_ms / 60000
+                    self.result_text.insert(tk.END,
+                                             f"{index}. {key}: {play_count} plays, {total_play_time_minutes:.2f} minutes\n")
+                else:
+                    self.result_text.insert(tk.END, f"{index}. {key}: {play_count} plays, Play time not available\n")
+            else:
+                self.result_text.insert(tk.END, f"{index}. {key}: {play_count} plays, Play time not available\n")
 
     def sort_by_plays(self):
-        sorted_data = self.analyzer.get_sorted_by_plays()
+        selected_year = self.selected_year.get()
+        year = int(selected_year) if selected_year != "All Time" else None
+        sorted_data = self.analyzer.get_sorted_by_plays(year)
         self.display_result(sorted_data)
 
     def sort_by_minutes(self):
-        sorted_data = self.analyzer.get_sorted_by_minutes()
+        selected_year = self.selected_year.get()
+        year = int(selected_year) if selected_year != "All Time" else None
+        sorted_data = self.analyzer.get_sorted_by_minutes(year)
         self.display_result(sorted_data)
 
 
