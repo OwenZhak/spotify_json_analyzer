@@ -85,56 +85,64 @@ class SpotifyAnalyzerUI:
             messagebox.showerror("Error", "No data to process.")
             return
 
+        # Process the loaded data
         self.analyzer.process_data(combined_data)
 
-        # Update year dropdown options
+        # Update the dropdown based on the years found in the data
         years = ["All Time"] + self.analyzer.track_years
         menu = self.year_dropdown["menu"]
         menu.delete(0, "end")
-        for year in years:
-            menu.add_command(label=year, command=lambda value=year: self.selected_year.set(value))
+        for y in years:
+            menu.add_command(label=y, command=lambda year_val=y: self.selected_year.set(year_val))
 
-        self.sort_by_plays()  # Display initial result
+        # Default display of sorted-by-plays
+        self.sort_by_plays()
 
     def display_result(self, sorted_data):
+        """
+        Removes old text, then prints each track result, including track name,
+        number of plays, and total minutes if available.
+        """
         self.result_text.delete(1.0, tk.END)
-        selected_year = self.selected_year.get()
-        self.result_text.insert(tk.END, f"Sorted Track Plays ({selected_year}):\n")
-        for index, (key, value) in enumerate(sorted_data, start=1):
-            play_count = value
-            year = int(selected_year) if selected_year != "All Time" else None
+        chosen_year = self.selected_year.get()
+        self.result_text.insert(tk.END, f"Sorted Track Plays ({chosen_year}):\n")
 
-            if year is not None and year in self.analyzer.track_play_time and key in self.analyzer.track_play_time[year]:
-                total_play_time_ms = self.analyzer.track_play_time[year][key]
-                total_play_time_minutes = total_play_time_ms / 60000
-                self.result_text.insert(tk.END,
-                                         f"{index}. {key}: {play_count} plays, {total_play_time_minutes:.2f} minutes\n")
-            elif year is None:  # "All Time" case
-                # Aggregate play time across all years
-                total_play_time_ms = 0
-                for year_data in self.analyzer.track_play_time.values():
-                    if key in year_data:
-                        total_play_time_ms += year_data[key]
+        # Convert "All Time" to None for easier lookups
+        the_year = None if chosen_year == "All Time" else int(chosen_year)
 
-                if total_play_time_ms > 0:
-                    total_play_time_minutes = total_play_time_ms / 60000
-                    self.result_text.insert(tk.END,
-                                             f"{index}. {key}: {play_count} plays, {total_play_time_minutes:.2f} minutes\n")
-                else:
-                    self.result_text.insert(tk.END, f"{index}. {key}: {play_count} plays, Play time not available\n")
+        for index, (track_key, play_count) in enumerate(sorted_data, start=1):
+            total_ms = 0
+
+            if the_year is not None:
+                # Lookup based on the exact year
+                if the_year in self.analyzer.track_play_time:
+                    total_ms = self.analyzer.track_play_time[the_year].get(track_key, 0)
             else:
-                self.result_text.insert(tk.END, f"{index}. {key}: {play_count} plays, Play time not available\n")
+                # Sum across all years for "All Time"
+                for y_data in self.analyzer.track_play_time.values():
+                    total_ms += y_data.get(track_key, 0)
+
+            if total_ms > 0:
+                total_minutes = total_ms / 60000
+                self.result_text.insert(tk.END,
+                    f"{index}. {track_key}: {play_count} plays, {total_minutes:.2f} minutes\n"
+                )
+            else:
+                print(f"Debug: Track {track_key} not found in track_play_time")
+                self.result_text.insert(tk.END,
+                    f"{index}. {track_key}: {play_count} plays, Play time not available\n"
+                )
 
     def sort_by_plays(self):
-        selected_year = self.selected_year.get()
-        year = int(selected_year) if selected_year != "All Time" else None
-        sorted_data = self.analyzer.get_sorted_by_plays(year)
+        chosen_year = self.selected_year.get()
+        year_val = None if chosen_year == "All Time" else int(chosen_year)
+        sorted_data = self.analyzer.get_sorted_by_plays(year_val)
         self.display_result(sorted_data)
 
     def sort_by_minutes(self):
-        selected_year = self.selected_year.get()
-        year = int(selected_year) if selected_year != "All Time" else None
-        sorted_data = self.analyzer.get_sorted_by_minutes(year)
+        chosen_year = self.selected_year.get()
+        year_val = None if chosen_year == "All Time" else int(chosen_year)
+        sorted_data = self.analyzer.get_sorted_by_minutes(year_val)
         self.display_result(sorted_data)
 
 
