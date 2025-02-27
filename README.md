@@ -1,4 +1,4 @@
-# spotify_json_analyzer
+
 This app is to view you spotify tracks and artist statistics.
 It will show you which songs are your most listend by plays and minutes.
 Also you can view your most listend artist.
