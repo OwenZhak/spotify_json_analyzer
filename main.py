@@ -9,6 +9,10 @@ class SpotifyAnalyzerUI:
         self.analyzer = SpotifyAnalyzer()
         self.selected_year = StringVar(root)
         self.selected_year.set("All Time")
+        # Add variable to track current sort method
+        self.current_sort = "plays"  # Default sort is by plays
+        # Add a trace to the selected_year variable
+        self.selected_year.trace("w", self.year_changed)
         self.setup_ui()
 
     def setup_ui(self):
@@ -212,6 +216,7 @@ class SpotifyAnalyzerUI:
         """
         Sort both tracks and artists by play count
         """
+        self.current_sort = "plays"  # Update current sort method
         chosen_year = self.selected_year.get()
         year_val = None if chosen_year == "All Time" else int(chosen_year)
         
@@ -227,6 +232,7 @@ class SpotifyAnalyzerUI:
         """
         Sort both tracks and artists by total minutes played
         """
+        self.current_sort = "minutes"  # Update current sort method
         chosen_year = self.selected_year.get()
         year_val = None if chosen_year == "All Time" else int(chosen_year)
         
@@ -237,6 +243,20 @@ class SpotifyAnalyzerUI:
         # Get sorted data and display for artists
         artists_data = self.analyzer.get_artists_sorted_by_minutes(year_val)
         self.display_artists(artists_data, "minutes")
+    
+    def year_changed(self, *args):
+        """
+        Called when the year selection changes, re-applies the current sort
+        """
+        # Skip if no data is loaded yet
+        if not hasattr(self.analyzer, 'track_years') or not self.analyzer.track_years:
+            return
+            
+        # Apply the current sort method
+        if self.current_sort == "plays":
+            self.sort_by_plays()
+        else:
+            self.sort_by_minutes()
 
 if __name__ == "__main__":
     ctypes.windll.shcore.SetProcessDpiAwareness(True)
