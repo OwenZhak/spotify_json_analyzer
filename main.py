@@ -1,6 +1,6 @@
 import ctypes
 import tkinter as tk
-from tkinter import filedialog, messagebox, Text, Scrollbar, Frame, Button, Label, OptionMenu, StringVar
+from tkinter import filedialog, messagebox, Text, Scrollbar, Frame, Button, Label, OptionMenu, StringVar, ttk
 from analyze_json import SpotifyAnalyzer
 
 class SpotifyAnalyzerUI:
@@ -13,90 +13,105 @@ class SpotifyAnalyzerUI:
 
     def setup_ui(self):
         self.root.title("Spotify Streaming History Analyzer")
-        self.root.geometry("1800x720")  # Wider to accommodate both frames
+        self.root.geometry("1200x720")
         self.root.configure(bg="#121212")
 
-        # Control Frame (Left)
-        left_frame = Frame(self.root, bg="#1e1e1e", width=300)
-        left_frame.pack(side=tk.LEFT, fill=tk.Y)
+        # Define colors
+        DARK_GREEN = "#1DB954"  # Spotify green
+        DARK_PINK = "#FF69B4"   # Hot pink
+        BG_COLOR = "#121212"    # Dark background
+        TEXT_COLOR = "white"
+        TEXT_BG = "#2e2e2e"
 
-        # Center Frame for Tracks
-        tracks_frame = Frame(self.root, bg="#1e1e1e")
-        tracks_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        # Create a top frame for buttons
+        top_frame = Frame(self.root, bg=BG_COLOR)
+        top_frame.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10)
 
-        # Right Frame for Artists
-        artists_frame = Frame(self.root, bg="#1e1e1e")
-        artists_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+        # Add buttons to top frame with specified colors
+        select_button = Button(top_frame, text="Select JSON Files", command=self.select_files, font=("Arial", 12),
+                              bg=DARK_GREEN, fg=TEXT_COLOR, padx=10, pady=5)
+        select_button.pack(side=tk.LEFT, padx=5)
 
-        button_width = 20
-        button_height = 2
+        # Year selection
+        year_label = Label(top_frame, text="Year:", font=("Arial", 12), bg=BG_COLOR, fg=TEXT_COLOR)
+        year_label.pack(side=tk.LEFT, padx=5)
 
-        # Left frame controls
-        select_button = Button(left_frame, text="Select JSON Files", command=self.select_files, font=("Arial", 14),
-                               bg="#c0392b", fg="white", width=button_width, height=button_height)
-        select_button.pack(pady=10)
+        self.year_dropdown = OptionMenu(top_frame, self.selected_year, "All Time")
+        self.year_dropdown.config(font=("Arial", 12), bg=DARK_GREEN, fg=TEXT_COLOR)
+        self.year_dropdown.pack(side=tk.LEFT, padx=5)
 
-        self.year_label = Label(left_frame, text="Select Year:", font=("Arial", 12), bg="#1e1e1e", fg="white")
-        self.year_label.pack(pady=5)
+        # Sort buttons
+        sort_label = Label(top_frame, text="Sort By:", font=("Arial", 12), bg=BG_COLOR, fg=TEXT_COLOR)
+        sort_label.pack(side=tk.LEFT, padx=10)
 
-        self.year_dropdown = OptionMenu(left_frame, self.selected_year, "All Time")
-        self.year_dropdown.config(font=("Arial", 12), bg="#34495e", fg="white", width=15)
-        self.year_dropdown.pack(pady=5)
+        sort_plays_button = Button(top_frame, text="Play Count", command=self.sort_by_plays, font=("Arial", 12),
+                                  bg=DARK_PINK, fg=TEXT_COLOR, padx=10, pady=5)
+        sort_plays_button.pack(side=tk.LEFT, padx=5)
 
-        # Sorting buttons (now affect both tracks and artists)
-        sort_label = Label(left_frame, text="Sort By:", font=("Arial", 14, "bold"), bg="#1e1e1e", fg="white")
-        sort_label.pack(pady=10)
+        sort_minutes_button = Button(top_frame, text="Total Minutes", command=self.sort_by_minutes,
+                                    font=("Arial", 12), bg=DARK_PINK, fg=TEXT_COLOR, padx=10, pady=5)
+        sort_minutes_button.pack(side=tk.LEFT, padx=5)
 
-        sort_plays_button = Button(left_frame, text="Play Count", command=self.sort_by_plays, font=("Arial", 14),
-                                  bg="#2980b9", fg="white", width=button_width, height=button_height)
-        sort_plays_button.pack(pady=10)
-
-        sort_minutes_button = Button(left_frame, text="Total Minutes", command=self.sort_by_minutes,
-                                    font=("Arial", 14), bg="#27ae60", fg="white", width=button_width, height=button_height)
-        sort_minutes_button.pack(pady=10)
-
-        instruction_label = Label(left_frame, text="Instructions:", font=("Arial", 12), bg="#1e1e1e", fg="white")
-        instruction_label.pack(pady=10)
-
-        instructions = Label(left_frame,
-                             text="1. Select your Spotify JSON files.\n2. Choose a year filter.\n3. Sort by plays or minutes.",
-                             font=("Arial", 12), bg="#1e1e1e", fg="white", justify=tk.LEFT)
-        instructions.pack(pady=10)
-
-        # Tracks Display Frame
-        tracks_display_frame = Frame(tracks_frame, bg="#1e1e1e", relief=tk.RAISED, bd=2)
-        tracks_display_frame.pack(pady=20, padx=20, fill=tk.BOTH, expand=True)
-
-        tracks_title = Label(tracks_display_frame, text="Tracks:", font=("Arial", 16, "bold"), bg="#1e1e1e", fg="white")
-        tracks_title.pack(pady=10)
-
-        self.tracks_text = Text(tracks_display_frame, wrap=tk.WORD, font=("Arial", 12), bg="#2e2e2e", fg="white",
+        # Create tab control with custom styling
+        style = ttk.Style()
+        style.theme_use('default')
+        style.configure("TNotebook", background=BG_COLOR, borderwidth=0)
+        style.configure("TNotebook.Tab", background=BG_COLOR, foreground=TEXT_COLOR, padding=[10, 5], font=('Arial', 12))
+        style.map("TNotebook.Tab", 
+                background=[("selected", DARK_GREEN), ("active", DARK_PINK)],
+                foreground=[("selected", TEXT_COLOR), ("active", TEXT_COLOR)])
+        
+        self.tab_control = ttk.Notebook(self.root)
+        
+        # Create Tracks tab
+        tracks_tab = Frame(self.tab_control, bg=BG_COLOR)
+        self.tab_control.add(tracks_tab, text='Tracks')
+        
+        # Create Artists tab
+        artists_tab = Frame(self.tab_control, bg=BG_COLOR)
+        self.tab_control.add(artists_tab, text='Artists')
+        
+        self.tab_control.pack(expand=1, fill="both", padx=10, pady=10)
+        
+        # Tracks content
+        tracks_frame = Frame(tracks_tab, bg=BG_COLOR)
+        tracks_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        self.tracks_text = Text(tracks_frame, wrap=tk.WORD, font=("Arial", 12), bg=TEXT_BG, fg=TEXT_COLOR,
                                insertbackground='white')
-        self.tracks_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10)
-
-        tracks_scrollbar = Scrollbar(tracks_display_frame, command=self.tracks_text.yview, bg="black")
+        self.tracks_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        tracks_scrollbar = Scrollbar(tracks_frame, command=self.tracks_text.yview)
         tracks_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.tracks_text.config(yscrollcommand=tracks_scrollbar.set)
-
-        # Artists Display Frame
-        artists_display_frame = Frame(artists_frame, bg="#1e1e1e", relief=tk.RAISED, bd=2)
-        artists_display_frame.pack(pady=20, padx=20, fill=tk.BOTH, expand=True)
-
-        artists_title = Label(artists_display_frame, text="Artists:", font=("Arial", 16, "bold"), bg="#1e1e1e", fg="white")
-        artists_title.pack(pady=10)
-
-        self.artists_text = Text(artists_display_frame, wrap=tk.WORD, font=("Arial", 12), bg="#2e2e2e", fg="white",
+        
+        # Artists content
+        artists_frame = Frame(artists_tab, bg=BG_COLOR)
+        artists_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        self.artists_text = Text(artists_frame, wrap=tk.WORD, font=("Arial", 12), bg=TEXT_BG, fg=TEXT_COLOR,
                                 insertbackground='white')
-        self.artists_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10)
-
-        artists_scrollbar = Scrollbar(artists_display_frame, command=self.artists_text.yview, bg="black")
+        self.artists_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        artists_scrollbar = Scrollbar(artists_frame, command=self.artists_text.yview)
         artists_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.artists_text.config(yscrollcommand=artists_scrollbar.set)
+        
+        # Default welcome message
+        welcome_message = "Welcome to Spotify Streaming History Analyzer!\n\n"
+        welcome_message += "1. Click 'Select JSON Files' to load your Spotify data\n"
+        welcome_message += "2. Choose a year filter from the dropdown\n"
+        welcome_message += "3. Sort by Play Count or Total Minutes\n"
+        welcome_message += "4. Switch between Tracks and Artists tabs to view results"
+        
+        self.tracks_text.insert(tk.END, welcome_message)
+        self.artists_text.insert(tk.END, welcome_message)
 
     def select_files(self):
         self.tracks_text.delete(1.0, tk.END)
         self.artists_text.delete(1.0, tk.END)
         self.tracks_text.insert(tk.END, "Analyzing your files, please wait...\n")
+        self.artists_text.insert(tk.END, "Analyzing your files, please wait...\n")
         self.root.update_idletasks()
 
         file_paths = filedialog.askopenfilenames(filetypes=[("JSON files", "*.json")])
